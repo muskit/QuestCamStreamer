@@ -1,0 +1,97 @@
+package net.muskit.questcamstreamer.ui
+
+import android.util.Log
+import androidx.camera.view.LifecycleCameraController
+import androidx.camera.view.PreviewView
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.absolutePadding
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import net.muskit.questcamstreamer.Camera
+import net.muskit.questcamstreamer.State
+import net.muskit.questcamstreamer.ui.icons.CameraSwitch
+import net.muskit.questcamstreamer.ui.icons.PreviewOff
+import net.muskit.questcamstreamer.ui.icons.PreviewOn
+import net.muskit.questcamstreamer.ui.theme.QuestCamStreamerTheme
+
+@Preview(showBackground = true)
+@Composable
+fun Preview() {
+    QuestCamStreamerTheme {
+//        CameraPreview(LocalContext.current)
+    }
+}
+
+@Composable
+fun CameraPreview(
+    controller: LifecycleCameraController,
+    modifier: Modifier = Modifier
+) {
+    @Composable
+    fun dpToSp(dp: Dp) = with(LocalDensity.current) { dp.toSp() }
+
+    val ctx = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var showPreview by remember { mutableStateOf(State.camPreview) }
+
+    Box(modifier = modifier,
+        contentAlignment = Alignment.Center
+    ) {
+        AndroidView(
+            factory = {
+                PreviewView(it).apply {
+                    scaleType = PreviewView.ScaleType.FIT_CENTER
+                    this.controller = controller
+                    controller.bindToLifecycle(lifecycleOwner)
+                }
+            },
+            modifier = Modifier
+                .fillMaxSize()
+        )
+        FloatingActionButton(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .absolutePadding(right = 3.dp),
+            onClick = {
+                showPreview = !showPreview
+                Log.d("UI", "CameraPreview: toggled preview! state is $showPreview")
+            }
+        ) {
+            val icon: () -> ImageVector = {
+                if (showPreview) {
+                    PreviewOn
+                } else {
+                    PreviewOff
+                }
+            }
+            Icon(imageVector = icon(), contentDescription = null)
+        }
+        IconButton(
+            modifier = Modifier
+                .align(Alignment.TopEnd),
+            content = { Icon(CameraSwitch, contentDescription = null) },
+            onClick = {
+                Log.d("UI", "CameraPreview: camera switch clicked!")
+                State.rightCam = !State.rightCam
+                Camera.setCamera(ctx)
+            }
+        )
+    }
+}
