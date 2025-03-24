@@ -10,15 +10,26 @@ import androidx.camera.view.LifecycleCameraController
 
 object State {
     var broadcastCam = true
-        set(v) { field = v; saveState() }
+        set(v) { field = v; save() }
     var rightCam = false
-        set(v) { field = v; saveState() }
+        set(v) { field = v; save() }
     var camPreview = true
-        set(v) { field = v; saveState() }
+        set(v) { field = v; save() }
 
     var broadcastMic = true
-        set(v) { field = v; saveState() }
+        set(v) { field = v; save() }
 
+    override fun toString(): String {
+        return "broadcastCam=${State.broadcastCam}; rightCam=${State.rightCam}"
+    }
+
+    public fun save() {
+        Log.d("States", "saveState: $this")
+    }
+
+    public fun load() {
+        Log.d("States", "loadState: $this")
+    }
 }
 
 object Camera {
@@ -49,12 +60,4 @@ fun camSelectorFromState(ctx: Context): CameraSelector {
     }
 
     return selector.build()
-}
-
-fun saveState() {
-    Log.d("States", "saveState: broadcastCam=${State.broadcastCam}; rightCam=${State.rightCam}")
-}
-
-fun loadState() {
-
 }

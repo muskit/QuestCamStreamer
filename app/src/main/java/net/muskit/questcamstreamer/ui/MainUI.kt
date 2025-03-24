@@ -6,6 +6,7 @@ import androidx.camera.view.CameraController
 import androidx.camera.view.LifecycleCameraController
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -65,22 +66,15 @@ fun MainScreen(idePreview: Boolean = false) {
 
     Column(modifier = Modifier
         .padding(innerPadding)
-        .fillMaxSize()) {
-        Row(
+        .fillMaxSize()
+    ) {
+        Box(
             modifier = Modifier
-//                .fillMaxSize()
                 .weight(1f),
         ) {
-            Spacer(Modifier
-                .background(Color.Black)
-                .weight(1f)
-                .fillMaxHeight()
-            )
             if (idePreview) {
                 Spacer(modifier = Modifier
-//                        .weight(1f)
-                    .aspectRatio(4f / 3)
-                    .fillMaxHeight()
+                    .fillMaxSize()
                     .background(color = Color.Cyan)
                 )
             } else {
@@ -106,24 +100,13 @@ fun MainScreen(idePreview: Boolean = false) {
                 CameraPreview(
                     controller = controller,
                     modifier = Modifier
-                            .wrapContentWidth()
-//                        .aspectRatio(4f / 3)
+                        .wrapContentWidth()
                         .fillMaxHeight()
                 )
             }
-            Spacer(Modifier
-                .background(Color.Black)
-                .weight(1f)
-                .fillMaxHeight()
-            )
         }
-        FlowRow(
-            modifier = Modifier
-//                .fillMaxSize()
-//                .weight(1f),
-        ) {
+        FlowRow {
             Column(
-//                    verticalArrangement = Arrangement.Center
                 modifier = Modifier
                     .weight(1f)
                     .padding(innerPadding)
@@ -142,7 +125,7 @@ fun MainScreen(idePreview: Boolean = false) {
                     horizontalArrangement = Arrangement.Absolute.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Enabled")
+                    Text("Enabled", fontSize = 20.sp)
                     Switch(
                         checked = camEnabled,
                         onCheckedChange = { state ->
@@ -165,7 +148,7 @@ fun MainScreen(idePreview: Boolean = false) {
                     horizontalArrangement = Arrangement.Absolute.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Enabled")
+                    Text("Enabled", fontSize = 20.sp)
                     Switch(
                         checked = micEnabled,
                         onCheckedChange = { state ->
