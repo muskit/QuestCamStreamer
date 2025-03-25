@@ -1,9 +1,5 @@
 package net.muskit.questcamstreamer.ui
 
-import androidx.camera.core.CameraSelector
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.view.CameraController
-import androidx.camera.view.LifecycleCameraController
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,7 +8,6 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,16 +23,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
-import net.muskit.questcamstreamer.Camera
-import net.muskit.questcamstreamer.ImageBroadcaster
-import net.muskit.questcamstreamer.State
-import net.muskit.questcamstreamer.camSelectorFromState
+import net.muskit.questcamstreamer.Settings
 import net.muskit.questcamstreamer.ui.theme.QuestCamStreamerTheme
 
 val innerPadding = 12.dp
@@ -61,8 +51,8 @@ fun AppPreviewLandscape() {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MainScreen(idePreview: Boolean = false) {
-    var camEnabled by remember { mutableStateOf(State.broadcastCam) }
-    var micEnabled by remember { mutableStateOf(State.broadcastMic) }
+    var camEnabled by remember { mutableStateOf(Settings.broadcastCam) }
+    var micEnabled by remember { mutableStateOf(Settings.broadcastMic) }
 
     Column(modifier = Modifier
         .padding(innerPadding)
@@ -78,27 +68,7 @@ fun MainScreen(idePreview: Boolean = false) {
                     .background(color = Color.Cyan)
                 )
             } else {
-                val ctx = LocalContext.current
-                val analyzer = remember {
-                    ImageBroadcaster()
-                }
-                val controller = remember {
-                    LifecycleCameraController(ctx).apply {
-                        setEnabledUseCases(CameraController.IMAGE_ANALYSIS)
-                        setImageAnalysisAnalyzer(
-                            ContextCompat.getMainExecutor(ctx),
-                            analyzer
-                        )
-                        Camera.controller = this
-
-                        val camProviderFut = ProcessCameraProvider.getInstance(ctx)
-                        camProviderFut.addListener({
-                            Camera.controller!!.cameraSelector = camSelectorFromState(ctx)
-                        }, ctx.mainExecutor)
-                    }
-                }
                 CameraPreview(
-                    controller = controller,
                     modifier = Modifier
                         .wrapContentWidth()
                         .fillMaxHeight()
@@ -130,7 +100,7 @@ fun MainScreen(idePreview: Boolean = false) {
                         checked = camEnabled,
                         onCheckedChange = { state ->
                             camEnabled = state
-                            State.broadcastCam = state
+                            Settings.broadcastCam = state
                         }
                     )
                 }
@@ -153,7 +123,7 @@ fun MainScreen(idePreview: Boolean = false) {
                         checked = micEnabled,
                         onCheckedChange = { state ->
                             micEnabled = state
-                            State.broadcastMic = state
+                            Settings.broadcastMic = state
                         }
                     )
                 }

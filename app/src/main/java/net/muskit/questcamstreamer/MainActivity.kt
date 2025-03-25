@@ -8,9 +8,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions
 import androidx.compose.material3.Scaffold
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.tooling.preview.Devices
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import net.muskit.questcamstreamer.ui.MainScreen
 import net.muskit.questcamstreamer.ui.theme.QuestCamStreamerTheme
 
@@ -18,16 +17,22 @@ class MainActivity : ComponentActivity() {
     private fun askForPerms() {
         val requestPermissionLauncher =
             registerForActivityResult(RequestMultiplePermissions()) {
-                perms: Map<String, Boolean> ->
-                    for ((perm, allowed) in perms) {
-                        Log.d("askForPerm", "$perm granted: $allowed")
-                    }
+                for ((perm, allowed) in it) {
+                    Log.d("askForPerm", "$perm granted: $allowed")
+                }
             }
 
         val perms = arrayOf(
             "android.permission.CAMERA",
             "horizonos.permission.HEADSET_CAMERA",
-            "android.permission.RECORD_AUDIO"
+            "android.permission.RECORD_AUDIO",
+            "android.permission.POST_NOTIFICATIONS",
+
+            "android.permission.FOREGROUND_SERVICE",
+            // the following are not needed until Android 14 (HorizonOS 74 is on 12)
+            "android.permission.FOREGROUND_SERVICE_CAMERA",
+            "android.permission.FOREGROUND_SERVICE_MICROPHONE",
+            "android.permission.FOREGROUND_SERVICE_DATA_SYNC"
         )
         Log.d("askForPerm", "asking for ${perms.size} permissions...")
         requestPermissionLauncher.launch(perms)
@@ -41,6 +46,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
+            State.appLifecycleOwner = LocalLifecycleOwner.current
+            Camera.initialize(LocalContext.current)
             QuestCamStreamerTheme {
                 Scaffold {
                     MainScreen()

@@ -4,9 +4,8 @@ import android.graphics.Bitmap
 import android.media.MediaCodec
 import android.media.MediaCodecInfo
 import android.media.MediaFormat
-import android.util.Log
 
-class Encoder {
+class VideoEncoder {
     private val encoder: MediaCodec
 
     constructor(width: Int, height: Int) {

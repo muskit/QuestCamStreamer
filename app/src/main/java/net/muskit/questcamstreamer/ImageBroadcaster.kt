@@ -1,21 +1,16 @@
 package net.muskit.questcamstreamer
 
-import android.graphics.Bitmap
-import android.media.MediaCodec
-import android.media.MediaCodecInfo
-import android.media.MediaCodecList
-import android.media.MediaFormat
 import android.util.Log
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 
 class ImageBroadcaster: ImageAnalysis.Analyzer {
     private var timeOfLastFrame: Long = 0
-    private val encoder: Encoder
+    private val encoder: VideoEncoder
 
     constructor() {
         // TODO: get actual resolution
-        encoder = Encoder(1280, 960)
+        encoder = VideoEncoder(1280, 960)
     }
 
     override fun analyze(image: ImageProxy) {
@@ -27,7 +22,7 @@ class ImageBroadcaster: ImageAnalysis.Analyzer {
         // send frame
         encoder.processFrame(image.toBitmap()) {
             // TODO: send encoded frame data
-            Log.d("processFrame", "frame data is ${it.size} bytes")
+//            Log.d("processFrame", "frame data is ${it.size} bytes")
         }
         image.close()
     }

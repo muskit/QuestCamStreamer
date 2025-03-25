@@ -1,7 +1,7 @@
 package net.muskit.questcamstreamer.ui
 
 import android.util.Log
-import androidx.camera.view.LifecycleCameraController
+import android.view.View
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.absolutePadding
@@ -23,9 +23,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.ActionProvider.VisibilityListener
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import net.muskit.questcamstreamer.Camera
-import net.muskit.questcamstreamer.State
+import net.muskit.questcamstreamer.Settings
 import net.muskit.questcamstreamer.ui.icons.CameraSwitch
 import net.muskit.questcamstreamer.ui.icons.PreviewOff
 import net.muskit.questcamstreamer.ui.icons.PreviewOn
@@ -41,7 +44,6 @@ fun Preview() {
 
 @Composable
 fun CameraPreview(
-    controller: LifecycleCameraController,
     modifier: Modifier = Modifier
 ) {
     @Composable
@@ -49,17 +51,32 @@ fun CameraPreview(
 
     val ctx = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    var showPreview by remember { mutableStateOf(State.camPreview) }
+    var showPreview by remember { mutableStateOf(Settings.camPreview) }
+    val previewUsecase = remember {
+        androidx.camera.core.Preview.Builder().build()
+    }
+
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
+        Camera.unbindUsecase("preview")
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        if (showPreview)
+            Camera.bindUsecase(lifecycleOwner, previewUsecase, "preview")
+    }
 
     Box(modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
         AndroidView(
             factory = {
-                PreviewView(it).apply {
-                    scaleType = PreviewView.ScaleType.FIT_CENTER
-                    this.controller = controller
-                    controller.bindToLifecycle(lifecycleOwner)
+                if (showPreview) {
+                    PreviewView(it).apply {
+                        scaleType = PreviewView.ScaleType.FIT_CENTER
+                        previewUsecase.surfaceProvider = this.surfaceProvider
+                        Camera.bindUsecase(lifecycleOwner, previewUsecase, "preview")
+                    }
+                } else {
+                    View(it)
                 }
             },
             modifier = Modifier
@@ -71,7 +88,11 @@ fun CameraPreview(
                 .absolutePadding(right = 3.dp),
             onClick = {
                 showPreview = !showPreview
-                Log.d("UI", "CameraPreview: toggled preview! state is $showPreview")
+                Log.d("UI", "CameraPreview: toggled preview! state is now $showPreview")
+                if (showPreview)
+                    Camera.bindUsecase(lifecycleOwner, previewUsecase, "preview")
+                else
+                    Camera.unbindUsecase("preview")
             }
         ) {
             val icon: () -> ImageVector = {
@@ -89,9 +110,13 @@ fun CameraPreview(
             content = { Icon(CameraSwitch, contentDescription = null) },
             onClick = {
                 Log.d("UI", "CameraPreview: camera switch clicked!")
-                State.rightCam = !State.rightCam
-                Camera.setCamera(ctx)
+                Settings.rightCam = !Settings.rightCam
+                Camera.refreshUsecasesLifecycle()
             }
         )
+    }
+
+    VisibilityListener {
+        Log.d("UI", "CameraPreview: visibility = $it")
     }
 }

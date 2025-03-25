@@ -11,6 +11,9 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
+//plugins {
+//    id("com.autonomousapps.build-health") version "2.13.1"
+//}
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
