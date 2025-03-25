@@ -6,14 +6,13 @@ import androidx.camera.core.ImageProxy
 
 class ImageBroadcaster: ImageAnalysis.Analyzer {
     private var timeOfLastFrame: Long = 0
-    private val encoder: VideoEncoder
-
-    constructor() {
-        // TODO: get actual resolution
-        encoder = VideoEncoder(1280, 960)
-    }
+    private lateinit var encoder: VideoEncoder
 
     override fun analyze(image: ImageProxy) {
+        if (!::encoder.isInitialized || encoder.width != image.width || encoder.height != image.height) {
+            encoder = VideoEncoder(image.width, image.height)
+        }
+
         // FPS display
         var frameTime = System.currentTimeMillis() - timeOfLastFrame
         timeOfLastFrame = System.currentTimeMillis()

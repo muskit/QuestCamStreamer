@@ -49,12 +49,9 @@ fun CameraPreview(
     @Composable
     fun dpToSp(dp: Dp) = with(LocalDensity.current) { dp.toSp() }
 
-    val ctx = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var showPreview by remember { mutableStateOf(Settings.camPreview) }
-    val previewUsecase = remember {
-        androidx.camera.core.Preview.Builder().build()
-    }
+    val previewUsecase = androidx.camera.core.Preview.Builder().build()
 
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
         Camera.unbindUsecase("preview")
@@ -69,14 +66,10 @@ fun CameraPreview(
     ) {
         AndroidView(
             factory = {
-                if (showPreview) {
-                    PreviewView(it).apply {
-                        scaleType = PreviewView.ScaleType.FIT_CENTER
-                        previewUsecase.surfaceProvider = this.surfaceProvider
-                        Camera.bindUsecase(lifecycleOwner, previewUsecase, "preview")
-                    }
-                } else {
-                    View(it)
+                PreviewView(it).apply {
+                    scaleType = PreviewView.ScaleType.FIT_CENTER
+                    previewUsecase.surfaceProvider = this.surfaceProvider
+                    Camera.bindUsecase(lifecycleOwner, previewUsecase, "preview")
                 }
             },
             modifier = Modifier
@@ -104,16 +97,6 @@ fun CameraPreview(
             }
             Icon(imageVector = icon(), contentDescription = null)
         }
-        IconButton(
-            modifier = Modifier
-                .align(Alignment.TopEnd),
-            content = { Icon(CameraSwitch, contentDescription = null) },
-            onClick = {
-                Log.d("UI", "CameraPreview: camera switch clicked!")
-                Settings.rightCam = !Settings.rightCam
-                Camera.refreshUsecasesLifecycle()
-            }
-        )
     }
 
     VisibilityListener {

@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.camera.core.ImageAnalysis
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
+import java.net.URL
 
 class BroadcastService: LifecycleService() {
     private lateinit var useCase: ImageAnalysis
@@ -24,22 +25,48 @@ class BroadcastService: LifecycleService() {
         State.broadcastService = this
         notification = NotificationCompat.Builder(this, "status_channel")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("Broadcasting")
-            .setContentText("camera, microphone")
+            .setContentTitle("Broadcasting IRL Sensors")
+            .setContentText("Quest Cam Streamer is broadcasting your camera and microphone.")
             .setOngoing(true)
             .build()
         startForeground(1, notification)
 
-        useCase = ImageAnalysis.Builder().build()
-        useCase.setAnalyzer(mainExecutor, ImageBroadcaster())
-        Camera.bindUsecase(this, useCase, "broadcast")
+        if (tryConnect()){
+            setCam(Settings.broadcastCam)
+        }
+    }
+
+    private fun tryConnect(): Boolean {
+        val url = URL("http://${Settings.connectionString}")
+        val host = url.host
+        val port = url.port
+
+        // establish connection
+
+        // send video specs (framerate, resolution)
+
+        return true
+    }
+
+    public fun setCam(on: Boolean) {
+        if (on) {
+            useCase = ImageAnalysis.Builder()
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .build()
+            useCase.setAnalyzer(mainExecutor, ImageBroadcaster())
+            Camera.bindUsecase(this, useCase, "broadcast")
+        } else { // off
+            Camera.unbindUsecase("broadcast")
+        }
+        Camera.refreshUsecasesLifecycle()
     }
 
     private fun stop() {
         Log.d("BroadcastService", "stop")
+
+        setCam(false)
+
         State.broadcastService = null
-        Camera.unbindUsecase("broadcast")
-        Camera.refreshUsecasesLifecycle()
         stopSelf()
     }
 

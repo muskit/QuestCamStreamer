@@ -7,8 +7,15 @@ import android.media.MediaFormat
 
 class VideoEncoder {
     private val encoder: MediaCodec
+    public var width: Int
+        private set
+    public var height: Int
+        private set
 
     constructor(width: Int, height: Int) {
+        this.width = width
+        this.height = height
+
         val mediaFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height).apply {
             setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible)
             setInteger(MediaFormat.KEY_BIT_RATE, 2_000_000) // 2 mbps

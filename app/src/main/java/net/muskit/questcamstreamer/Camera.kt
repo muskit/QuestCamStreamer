@@ -8,6 +8,9 @@ import androidx.lifecycle.LifecycleOwner
 import com.google.common.util.concurrent.ListenableFuture
 
 object Camera {
+    public lateinit var camera: androidx.camera.core.Camera
+        private set
+
     private lateinit var appContext: Context
     private lateinit var camProviderFut: ListenableFuture<ProcessCameraProvider>
     private val useCases = mutableMapOf<String, UseCase>()
@@ -56,7 +59,7 @@ object Camera {
             Log.d("Camera", "refreshUsecasesLifecycle: using app lifecycle")
 
         for ((_, u) in useCases) {
-            cameraProvider.bindToLifecycle(lifecycle, Settings.camSelector(cameraProvider), u)
+            camera = cameraProvider.bindToLifecycle(lifecycle, Settings.camSelector(cameraProvider), u)
         }
     }
 }

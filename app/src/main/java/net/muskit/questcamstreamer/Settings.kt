@@ -16,6 +16,9 @@ object Settings {
     var broadcastMic = true
         set(v) { field = v; save() }
 
+    var connectionString = ""
+        set(v) { field = v; save() }
+
     public fun camFilter(cameraProvider: ProcessCameraProvider, cameraInfo: CameraInfo): Boolean {
         if (rightCam)
             return cameraInfo == cameraProvider.availableCameraInfos.last()
@@ -39,10 +42,10 @@ object Settings {
     }
 
     public fun save() {
-        Log.d("States", "saveState: $this")
+        Log.d("Settings", "save: $this")
     }
 
     public fun load() {
-        Log.d("States", "loadState: $this")
+        Log.d("Settings", "load: $this")
     }
 }

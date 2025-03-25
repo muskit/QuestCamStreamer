@@ -2,6 +2,7 @@ package net.muskit.questcamstreamer.ui
 
 import android.content.Intent
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,6 +19,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -27,9 +29,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import net.muskit.questcamstreamer.BroadcastService
+import net.muskit.questcamstreamer.Settings
 import net.muskit.questcamstreamer.State
 import net.muskit.questcamstreamer.ui.icons.QrCodeScan
 import net.muskit.questcamstreamer.ui.theme.QuestCamStreamerTheme
+import java.net.URL
 
 @Composable
 @Preview(showBackground = true)
@@ -42,7 +46,7 @@ fun ConnPanePreview() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConnectionPane(modifier: Modifier = Modifier) {
-    var connText by remember { mutableStateOf("") }
+    var connText by remember { mutableStateOf(Settings.connectionString) }
     var connected by remember { mutableStateOf(State.broadcastService != null) }
     val ctx = LocalContext.current
 
@@ -53,7 +57,10 @@ fun ConnectionPane(modifier: Modifier = Modifier) {
             modifier = Modifier
                 .fillMaxWidth(),
             value = connText,
-            onValueChange = { connText = it },
+            onValueChange = {
+                connText = it;
+                Settings.connectionString = it
+            },
             label = { Text("host:port") },
             singleLine = true,
             trailingIcon = {
@@ -63,34 +70,50 @@ fun ConnectionPane(modifier: Modifier = Modifier) {
                     },
                 onClick = {
                     Log.d("UI", "ConnectionPane: QR scan clicked!")
+                    Toast.makeText(ctx, "QR Scan coming soon!", Toast.LENGTH_SHORT).show()
                 })
             }
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Button(
-            modifier = Modifier
-                .fillMaxWidth(),
-            onClick = {
-                Log.d("UI", "ConnectionPane: Connect click! to $connText")
-                connected = !connected
-                Intent(ctx, BroadcastService::class.java).also {
-                    it.action = when(connected) {
-                        true -> BroadcastService.Actions.START.toString()
-                        false -> BroadcastService.Actions.END.toString()
-                    }
-                    Log.d("UI", "ConnectionPane: launching intent $it")
-                    ctx.startService(it)
-                }
+
+        key(connText) {
+            // validate connectionString to set button state
+            var host = ""
+            var port = -1
+            try {
+                val url = URL("http://${connText}")
+                host = url.host
+                port = url.port
+            } catch (e: Exception) {
+                Log.e("UI", "ConnectionPane: could not create URL: $e", )
             }
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                val txt = when {
-                    connected -> "Disconnect"
-                    else -> "Connect"
+            Log.d("UI", "ConnectionPane: connStr interpreted as $host:$port")
+            Button(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                onClick = {
+                    Log.d("UI", "ConnectionPane: Connect click! to $connText")
+                    connected = !connected
+                    Intent(ctx, BroadcastService::class.java).also {
+                        it.action = when(connected) {
+                            true -> BroadcastService.Actions.START.toString()
+                            false -> BroadcastService.Actions.END.toString()
+                        }
+                        Log.d("UI", "ConnectionPane: launching intent $it")
+                        ctx.startService(it)
+                    }
+                },
+                enabled = host != "" && port != -1
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val txt = when {
+                        connected -> "Disconnect"
+                        else -> "Connect"
+                    }
+                    Text(txt)
+                    Spacer(modifier = Modifier.width(7.dp))
+                    Icon(Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = "")
                 }
-                Text(txt)
-                Spacer(modifier = Modifier.width(7.dp))
-                Icon(Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = "")
             }
         }
     }
