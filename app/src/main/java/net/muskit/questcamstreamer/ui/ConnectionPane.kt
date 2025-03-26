@@ -59,7 +59,8 @@ fun ConnectionPane(modifier: Modifier = Modifier) {
 
         val receiver = object : BroadcastReceiver(){
             override fun onReceive(context: Context?, intent: Intent?) {
-                status =  intent?.extras?.get("status") as StreamService.Status
+                status = intent?.extras?.get("status") as StreamService.Status
+                Log.d("UI", "ConnectionPane: got status $status")
             }
         }
 
@@ -71,7 +72,7 @@ fun ConnectionPane(modifier: Modifier = Modifier) {
             ctx,
             receiver,
             intentFilter,
-            ContextCompat.RECEIVER_NOT_EXPORTED
+            ContextCompat.RECEIVER_EXPORTED
         )
 
         onDispose {
@@ -123,28 +124,23 @@ fun ConnectionPane(modifier: Modifier = Modifier) {
                 onClick = {
                     Log.d("UI", "ConnectionPane: Connect click! to $connText")
 
-                    if (status == StreamService.Status.CONNECTING) return@Button
                     Intent(ctx, StreamService::class.java).also {
                         it.action = when(status) {
-                            StreamService.Status.CONNECTED -> StreamService.Actions.END.toString()
-                            else -> StreamService.Actions.START.toString()
+                            StreamService.Status.DISCONNECTED -> StreamService.Actions.START.toString()
+                            else -> StreamService.Actions.END.toString()
                         }
                         Log.d("UI", "ConnectionPane: launching intent $it")
                         ctx.startService(it)
                     }
                 },
-                enabled = host != "" && port != -1 && status != StreamService.Status.CONNECTING
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    val txt = when(status) {
+                Text(
+                    when(status) {
                         StreamService.Status.CONNECTED -> "Disconnect"
                         StreamService.Status.DISCONNECTED -> "Connect"
-                        else -> "Connecting..."
+                        else -> "Connecting... (click to cancel)"
                     }
-                    Text(txt)
-                    Spacer(modifier = Modifier.width(7.dp))
-                    Icon(Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = "")
-                }
+                )
             }
         }
     }

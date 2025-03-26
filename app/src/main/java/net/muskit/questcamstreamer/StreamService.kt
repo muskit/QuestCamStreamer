@@ -1,6 +1,6 @@
 package net.muskit.questcamstreamer
 
-import android.app.Notification
+import android.app.NotificationManager
 import android.content.Intent
 import android.util.Log
 import androidx.camera.core.ImageAnalysis
@@ -8,19 +8,25 @@ import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import net.muskit.questcamstreamer.global.Settings
 import net.muskit.questcamstreamer.global.State
 import net.muskit.questcamstreamer.video.Camera
 import net.muskit.questcamstreamer.video.ImageStreamer
+import java.io.BufferedInputStream
+import java.io.DataInputStream
 import java.net.Socket
 import java.net.URL
 
 class StreamService: LifecycleService() {
     private val TAG = "StreamService"
 
+    private lateinit var connectingCoroutine: CoroutineScope
+
     private lateinit var useCase: ImageAnalysis
-    public lateinit var notification: Notification
+    private lateinit var notifBuilder: NotificationCompat.Builder
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when(intent?.action) {
@@ -33,26 +39,38 @@ class StreamService: LifecycleService() {
     private fun start() {
         Log.d(TAG, "start")
         State.streamService = this
-        notification = NotificationCompat.Builder(this, "status_channel")
+        notifBuilder = NotificationCompat.Builder(this, "status_channel")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("Quest Cam Streamer")
             .setContentText("You are sharing your camera and microphone.")
             .setOngoing(true)
-            .build()
-        startForeground(1, notification)
 
-        sendBroadcast(Intent(CONNECTION_STATUS_CHANGED).putExtra("status", Status.CONNECTING))
-        CoroutineScope(Dispatchers.IO).launch {
+        setStatus(Status.CONNECTING, false)
+        startForeground(1, notifBuilder.build())
+
+        connectingCoroutine = CoroutineScope(Dispatchers.IO)
+        connectingCoroutine.launch {
             val connSuccess = tryConnect()
             CoroutineScope(Dispatchers.Main).launch {
                 if (connSuccess) {
-                    sendBroadcast(Intent(CONNECTION_STATUS_CHANGED).putExtra("status", Status.CONNECTED))
+                    setStatus(Status.CONNECTED)
                     setCam(Settings.streamCam)
                 } else {
-                    sendBroadcast(Intent(CONNECTION_STATUS_CHANGED).putExtra("status", Status.DISCONNECTED))
+                    setStatus(Status.DISCONNECTED)
                     stop()
                 }
             }
+        }
+    }
+
+    private fun setStatus(status: Status, updateExistingNotif: Boolean = false) {
+        sendBroadcast(Intent(CONNECTION_STATUS_CHANGED).putExtra("status", status))
+        val txt = status.toString().lowercase()
+//        txt.replaceFirstChar { it.uppercaseChar() }
+        notifBuilder.setContentTitle("Quest Cam Streamer is $txt")
+
+        if (updateExistingNotif) {
+            val notifMan = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+            notifMan.notify(1, notifBuilder.build())
         }
     }
 
@@ -65,7 +83,9 @@ class StreamService: LifecycleService() {
         Log.d(TAG, "tryConnect: connecting to $host:$port")
         val socket: Socket
         try {
+            Log.d(TAG, "tryConnect: socket creation...")
             socket = Socket(host, port)
+            Log.d(TAG, "tryConnect: socket connected!")
         } catch (e: Exception) {
             Log.e(TAG, "tryConnect: error $e")
             return false
@@ -73,13 +93,21 @@ class StreamService: LifecycleService() {
 
         // exchange RTC offer
         // send video specs (framerate, resolution)
+        Log.d(TAG, "tryConnect: sending offer")
         val stream = socket.getOutputStream()
         stream.write("yummers".toByteArray())
+        Log.d(TAG, "tryConnect: offser sent")
 
         // get answer
         val resp = byteArrayOf()
-        socket.getInputStream().read(resp)
+        val inStream = DataInputStream(BufferedInputStream(socket.getInputStream()))
 
+//        do {
+//            inStream.readFully(resp)
+//        } while (resp.isNotEmpty())
+
+        Log.d(TAG, "tryConnect: reading answer")
+        inStream.readFully(resp)
         val str = resp.decodeToString()
         Log.d(TAG, "tryConnect: got answer: $str (${str.length} bytes)")
 
@@ -87,6 +115,7 @@ class StreamService: LifecycleService() {
 
         // establish RTC streaming connection
 
+        Log.d(TAG, "tryConnect: done")
         return false
     }
 
@@ -106,8 +135,12 @@ class StreamService: LifecycleService() {
     private fun stop() {
         Log.d(TAG, "stop")
 
+        if (connectingCoroutine.isActive) {
+            connectingCoroutine.cancel()
+        }
         State.streamService = null
         setCam(false)
+        setStatus(Status.DISCONNECTED)
         stopSelf()
     }
 
