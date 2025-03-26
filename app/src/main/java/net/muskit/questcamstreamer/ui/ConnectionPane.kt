@@ -1,6 +1,9 @@
 package net.muskit.questcamstreamer.ui
 
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.layout.Column
@@ -18,6 +21,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -28,9 +32,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import net.muskit.questcamstreamer.BroadcastService
-import net.muskit.questcamstreamer.Settings
-import net.muskit.questcamstreamer.State
+import androidx.core.content.ContextCompat
+import net.muskit.questcamstreamer.StreamService
+import net.muskit.questcamstreamer.global.Settings
 import net.muskit.questcamstreamer.ui.icons.QrCodeScan
 import net.muskit.questcamstreamer.ui.theme.QuestCamStreamerTheme
 import java.net.URL
@@ -47,8 +51,33 @@ fun ConnPanePreview() {
 @Composable
 fun ConnectionPane(modifier: Modifier = Modifier) {
     var connText by remember { mutableStateOf(Settings.connectionString) }
-    var connected by remember { mutableStateOf(State.broadcastService != null) }
+    var status by remember { mutableStateOf(StreamService.Status.DISCONNECTED) }
     val ctx = LocalContext.current
+
+    DisposableEffect(ctx) {
+        val intentFilter = IntentFilter(StreamService.CONNECTION_STATUS_CHANGED)
+
+        val receiver = object : BroadcastReceiver(){
+            override fun onReceive(context: Context?, intent: Intent?) {
+                status =  intent?.extras?.get("status") as StreamService.Status
+            }
+        }
+
+        // Old way, may crash in Android 14
+        // context.registerReceiver(receiver, intentFilter)
+
+        // Recommended way, checks Android API compatibility for you
+        ContextCompat.registerReceiver(
+            ctx,
+            receiver,
+            intentFilter,
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+
+        onDispose {
+            ctx.unregisterReceiver(receiver)
+        }
+    }
 
     Column(
         modifier = modifier
@@ -63,6 +92,7 @@ fun ConnectionPane(modifier: Modifier = Modifier) {
             },
             label = { Text("host:port") },
             singleLine = true,
+            enabled = (status == StreamService.Status.DISCONNECTED),
             trailingIcon = {
                 IconButton(
                     content = {
@@ -76,7 +106,7 @@ fun ConnectionPane(modifier: Modifier = Modifier) {
         )
         Spacer(modifier = Modifier.height(8.dp))
 
-        key(connText) {
+        key(connText, status) {
             // validate connectionString to set button state
             var host = ""
             var port = -1
@@ -87,28 +117,29 @@ fun ConnectionPane(modifier: Modifier = Modifier) {
             } catch (e: Exception) {
                 Log.e("UI", "ConnectionPane: could not create URL: $e", )
             }
-            Log.d("UI", "ConnectionPane: connStr interpreted as $host:$port")
             Button(
                 modifier = Modifier
                     .fillMaxWidth(),
                 onClick = {
                     Log.d("UI", "ConnectionPane: Connect click! to $connText")
-                    connected = !connected
-                    Intent(ctx, BroadcastService::class.java).also {
-                        it.action = when(connected) {
-                            true -> BroadcastService.Actions.START.toString()
-                            false -> BroadcastService.Actions.END.toString()
+
+                    if (status == StreamService.Status.CONNECTING) return@Button
+                    Intent(ctx, StreamService::class.java).also {
+                        it.action = when(status) {
+                            StreamService.Status.CONNECTED -> StreamService.Actions.END.toString()
+                            else -> StreamService.Actions.START.toString()
                         }
                         Log.d("UI", "ConnectionPane: launching intent $it")
                         ctx.startService(it)
                     }
                 },
-                enabled = host != "" && port != -1
+                enabled = host != "" && port != -1 && status != StreamService.Status.CONNECTING
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    val txt = when {
-                        connected -> "Disconnect"
-                        else -> "Connect"
+                    val txt = when(status) {
+                        StreamService.Status.CONNECTED -> "Disconnect"
+                        StreamService.Status.DISCONNECTED -> "Connect"
+                        else -> "Connecting..."
                     }
                     Text(txt)
                     Spacer(modifier = Modifier.width(7.dp))

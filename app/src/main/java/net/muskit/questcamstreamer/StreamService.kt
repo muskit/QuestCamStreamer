@@ -1,0 +1,123 @@
+package net.muskit.questcamstreamer
+
+import android.app.Notification
+import android.content.Intent
+import android.util.Log
+import androidx.camera.core.ImageAnalysis
+import androidx.core.app.NotificationCompat
+import androidx.lifecycle.LifecycleService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import net.muskit.questcamstreamer.global.Settings
+import net.muskit.questcamstreamer.global.State
+import net.muskit.questcamstreamer.video.Camera
+import net.muskit.questcamstreamer.video.ImageStreamer
+import java.net.Socket
+import java.net.URL
+
+class StreamService: LifecycleService() {
+    private val TAG = "StreamService"
+
+    private lateinit var useCase: ImageAnalysis
+    public lateinit var notification: Notification
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        when(intent?.action) {
+            Actions.START.toString() -> start()
+            Actions.END.toString() -> stop()
+        }
+        return super.onStartCommand(intent, flags, startId)
+    }
+
+    private fun start() {
+        Log.d(TAG, "start")
+        State.streamService = this
+        notification = NotificationCompat.Builder(this, "status_channel")
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle("Quest Cam Streamer")
+            .setContentText("You are sharing your camera and microphone.")
+            .setOngoing(true)
+            .build()
+        startForeground(1, notification)
+
+        sendBroadcast(Intent(CONNECTION_STATUS_CHANGED).putExtra("status", Status.CONNECTING))
+        CoroutineScope(Dispatchers.IO).launch {
+            val connSuccess = tryConnect()
+            CoroutineScope(Dispatchers.Main).launch {
+                if (connSuccess) {
+                    sendBroadcast(Intent(CONNECTION_STATUS_CHANGED).putExtra("status", Status.CONNECTED))
+                    setCam(Settings.streamCam)
+                } else {
+                    sendBroadcast(Intent(CONNECTION_STATUS_CHANGED).putExtra("status", Status.DISCONNECTED))
+                    stop()
+                }
+            }
+        }
+    }
+
+    private fun tryConnect(): Boolean {
+        val url = URL("http://${Settings.connectionString}")
+        val host = url.host
+        val port = url.port
+
+        // establish connection
+        Log.d(TAG, "tryConnect: connecting to $host:$port")
+        val socket: Socket
+        try {
+            socket = Socket(host, port)
+        } catch (e: Exception) {
+            Log.e(TAG, "tryConnect: error $e")
+            return false
+        }
+
+        // exchange RTC offer
+        // send video specs (framerate, resolution)
+        val stream = socket.getOutputStream()
+        stream.write("yummers".toByteArray())
+
+        // get answer
+        val resp = byteArrayOf()
+        socket.getInputStream().read(resp)
+
+        val str = resp.decodeToString()
+        Log.d(TAG, "tryConnect: got answer: $str (${str.length} bytes)")
+
+        socket.close()
+
+        // establish RTC streaming connection
+
+        return false
+    }
+
+    public fun setCam(on: Boolean) {
+        if (on) {
+            useCase = ImageAnalysis.Builder()
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .build()
+            useCase.setAnalyzer(mainExecutor, ImageStreamer())
+            Camera.bindUsecase(this, useCase, "stream")
+        } else { // off
+            Camera.unbindUsecase("stream")
+        }
+        Camera.refreshUsecasesLifecycle()
+    }
+
+    private fun stop() {
+        Log.d(TAG, "stop")
+
+        State.streamService = null
+        setCam(false)
+        stopSelf()
+    }
+
+    enum class Status {
+        DISCONNECTED, CONNECTING, CONNECTED
+    }
+    enum class Actions {
+        START, END
+    }
+    companion object {
+        val CONNECTION_STATUS_CHANGED = "net.muskit.QuestCamStreamer_CONNECTION_STATUS"
+    }
+}

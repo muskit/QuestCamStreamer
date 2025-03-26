@@ -1,7 +1,5 @@
 package net.muskit.questcamstreamer.ui
 
-import android.util.AttributeSet
-import android.widget.Button
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,10 +30,9 @@ import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
-import net.muskit.questcamstreamer.Camera
-import net.muskit.questcamstreamer.Settings
-import net.muskit.questcamstreamer.State
+import net.muskit.questcamstreamer.video.Camera
+import net.muskit.questcamstreamer.global.Settings
+import net.muskit.questcamstreamer.global.State
 import net.muskit.questcamstreamer.ui.theme.QuestCamStreamerTheme
 
 val innerPadding = 12.dp
@@ -59,8 +56,8 @@ fun AppPreviewLandscape() {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MainScreen(idePreview: Boolean = false) {
-    var camEnabled by remember { mutableStateOf(Settings.broadcastCam) }
-    var micEnabled by remember { mutableStateOf(Settings.broadcastMic) }
+    var camEnabled by remember { mutableStateOf(Settings.streamCam) }
+    var micEnabled by remember { mutableStateOf(Settings.streamMic) }
     var rightCam by remember { mutableStateOf(Settings.rightCam) }
 
     Column(modifier = Modifier
@@ -109,8 +106,8 @@ fun MainScreen(idePreview: Boolean = false) {
                         checked = camEnabled,
                         onCheckedChange = { state ->
                             camEnabled = state
-                            Settings.broadcastCam = state
-                            State.broadcastService?.setCam(state)
+                            Settings.streamCam = state
+                            State.streamService?.setCam(state)
                         }
                     )
                 }
@@ -162,7 +159,7 @@ fun MainScreen(idePreview: Boolean = false) {
                         checked = micEnabled,
                         onCheckedChange = { state ->
                             micEnabled = state
-                            Settings.broadcastMic = state
+                            Settings.streamMic = state
                         }
                     )
                 }

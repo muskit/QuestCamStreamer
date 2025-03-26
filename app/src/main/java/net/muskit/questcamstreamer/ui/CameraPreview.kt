@@ -1,14 +1,12 @@
 package net.muskit.questcamstreamer.ui
 
 import android.util.Log
-import android.view.View
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.absolutePadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -17,7 +15,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -27,9 +24,8 @@ import androidx.core.view.ActionProvider.VisibilityListener
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import net.muskit.questcamstreamer.Camera
-import net.muskit.questcamstreamer.Settings
-import net.muskit.questcamstreamer.ui.icons.CameraSwitch
+import net.muskit.questcamstreamer.video.Camera
+import net.muskit.questcamstreamer.global.Settings
 import net.muskit.questcamstreamer.ui.icons.PreviewOff
 import net.muskit.questcamstreamer.ui.icons.PreviewOn
 import net.muskit.questcamstreamer.ui.theme.QuestCamStreamerTheme

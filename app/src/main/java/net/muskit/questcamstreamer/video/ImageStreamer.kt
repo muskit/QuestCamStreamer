@@ -1,10 +1,10 @@
-package net.muskit.questcamstreamer
+package net.muskit.questcamstreamer.video
 
 import android.util.Log
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 
-class ImageBroadcaster: ImageAnalysis.Analyzer {
+class ImageStreamer: ImageAnalysis.Analyzer {
     private var timeOfLastFrame: Long = 0
     private lateinit var encoder: VideoEncoder
 

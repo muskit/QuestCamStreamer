@@ -1,4 +1,4 @@
-package net.muskit.questcamstreamer
+package net.muskit.questcamstreamer.global
 
 import android.util.Log
 import androidx.camera.core.CameraInfo
@@ -6,17 +6,17 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.lifecycle.ProcessCameraProvider
 
 object Settings {
-    var broadcastCam = true
+    var streamCam = true
         set(v) { field = v; save() }
     var rightCam = false
         set(v) { field = v; save() }
     var camPreview = true
         set(v) { field = v; save() }
 
-    var broadcastMic = true
+    var streamMic = true
         set(v) { field = v; save() }
 
-    var connectionString = ""
+    var connectionString = "192.168.50.143:12345"
         set(v) { field = v; save() }
 
     public fun camFilter(cameraProvider: ProcessCameraProvider, cameraInfo: CameraInfo): Boolean {
@@ -38,7 +38,7 @@ object Settings {
     }
 
     override fun toString(): String {
-        return "broadcastCam=${Settings.broadcastCam}; rightCam=${Settings.rightCam}"
+        return "streamCam=$streamCam; rightCam=$rightCam"
     }
 
     public fun save() {

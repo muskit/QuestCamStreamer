@@ -1,4 +1,4 @@
-package net.muskit.questcamstreamer
+package net.muskit.questcamstreamer.video
 
 import android.content.Context
 import android.util.Log
@@ -6,6 +6,8 @@ import androidx.camera.core.UseCase
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.lifecycle.LifecycleOwner
 import com.google.common.util.concurrent.ListenableFuture
+import net.muskit.questcamstreamer.global.Settings
+import net.muskit.questcamstreamer.global.State
 
 object Camera {
     public lateinit var camera: androidx.camera.core.Camera
@@ -17,7 +19,7 @@ object Camera {
 
     public fun initialize(ctx: Context) {
         appContext = ctx
-        if (!::camProviderFut.isInitialized)
+        if (!Camera::camProviderFut.isInitialized)
             camProviderFut = ProcessCameraProvider.getInstance(ctx)
     }
 
@@ -52,9 +54,9 @@ object Camera {
 
         cameraProvider.unbindAll()
 
-        val lifecycle = State.broadcastService ?: State.appLifecycleOwner
-        if (lifecycle == State.broadcastService)
-            Log.d("Camera", "refreshUsecasesLifecycle: using broadcast lifecycle")
+        val lifecycle = State.streamService ?: State.appLifecycleOwner
+        if (lifecycle == State.streamService)
+            Log.d("Camera", "refreshUsecasesLifecycle: using streamer lifecycle")
         else
             Log.d("Camera", "refreshUsecasesLifecycle: using app lifecycle")
 

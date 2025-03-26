@@ -10,8 +10,10 @@ import androidx.activity.result.contract.ActivityResultContracts.RequestMultiple
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import net.muskit.questcamstreamer.global.State
 import net.muskit.questcamstreamer.ui.MainScreen
 import net.muskit.questcamstreamer.ui.theme.QuestCamStreamerTheme
+import net.muskit.questcamstreamer.video.Camera
 
 class MainActivity : ComponentActivity() {
     private fun askForPerms() {
@@ -27,6 +29,8 @@ class MainActivity : ComponentActivity() {
             "horizonos.permission.HEADSET_CAMERA",
             "android.permission.RECORD_AUDIO",
             "android.permission.POST_NOTIFICATIONS",
+            "android.permission.INTERNET",
+            "android.permission.ACCESS_NETWORK_STATE",
 
             "android.permission.FOREGROUND_SERVICE",
             // the following are not needed until Android 14 (HorizonOS 74 is on 12)

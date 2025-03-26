@@ -1,4 +1,4 @@
-package net.muskit.questcamstreamer
+package net.muskit.questcamstreamer.video
 
 import android.graphics.Bitmap
 import android.media.MediaCodec

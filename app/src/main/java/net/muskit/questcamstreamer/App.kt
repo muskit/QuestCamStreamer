@@ -10,7 +10,7 @@ class App : Application() {
         super.onCreate()
         val channel = NotificationChannel(
             "status_channel",
-            "Broadcast Status",
+            "Stream Status",
             NotificationManager.IMPORTANCE_HIGH
         )
         val notifMan = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
