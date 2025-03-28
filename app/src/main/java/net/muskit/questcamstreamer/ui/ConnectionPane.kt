@@ -11,13 +11,17 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -120,7 +124,8 @@ fun ConnectionPane(modifier: Modifier = Modifier) {
             }
             Button(
                 modifier = Modifier
-                    .fillMaxWidth(),
+                    .fillMaxWidth()
+                    .height(ButtonDefaults.MinHeight),
                 onClick = {
                     Log.d("UI", "ConnectionPane: Connect click! to $connText")
 
@@ -133,14 +138,22 @@ fun ConnectionPane(modifier: Modifier = Modifier) {
                         ctx.startService(it)
                     }
                 },
+                enabled = status != StreamService.Status.CONNECTING
             ) {
-                Text(
-                    when(status) {
-                        StreamService.Status.CONNECTED -> "Disconnect"
-                        StreamService.Status.DISCONNECTED -> "Connect"
-                        else -> "Connecting... (click to cancel)"
+                when(status) {
+                    StreamService.Status.CONNECTED -> Text("Disconnect")
+                    StreamService.Status.DISCONNECTED -> Text("Connect")
+                    else -> {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(ButtonDefaults.IconSize),
+                                strokeWidth = 3.dp
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Connecting...")
+                        }
                     }
-                )
+                }
             }
         }
     }

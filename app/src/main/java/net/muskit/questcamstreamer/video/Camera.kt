@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.camera.core.UseCase
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.core.content.ContextCompat.getMainExecutor
 import androidx.lifecycle.LifecycleOwner
 import com.google.common.util.concurrent.ListenableFuture
 import net.muskit.questcamstreamer.global.Settings
@@ -43,25 +44,28 @@ object Camera {
 
     public fun unbindUsecase(from: String) {
         if (useCases.containsKey(from)) {
-            val cameraProvider = camProviderFut.get()
-            cameraProvider.unbind(useCases[from])
-            useCases.remove(from)
+            camProviderFut.addListener({
+                val cameraProvider = camProviderFut.get()
+                cameraProvider.unbind(useCases[from])
+                useCases.remove(from)
+            }, appContext.mainExecutor)
         }
     }
 
     public fun refreshUsecasesLifecycle() {
-        val cameraProvider = camProviderFut.get()
+        camProviderFut.addListener ({
+            val cameraProvider = camProviderFut.get()
+            cameraProvider.unbindAll()
 
-        cameraProvider.unbindAll()
+            val lifecycle = State.streamService ?: State.appLifecycleOwner
+            if (lifecycle == State.streamService)
+                Log.d("Camera", "refreshUsecasesLifecycle: using streamer lifecycle")
+            else
+                Log.d("Camera", "refreshUsecasesLifecycle: using app lifecycle")
 
-        val lifecycle = State.streamService ?: State.appLifecycleOwner
-        if (lifecycle == State.streamService)
-            Log.d("Camera", "refreshUsecasesLifecycle: using streamer lifecycle")
-        else
-            Log.d("Camera", "refreshUsecasesLifecycle: using app lifecycle")
-
-        for ((_, u) in useCases) {
-            camera = cameraProvider.bindToLifecycle(lifecycle, Settings.camSelector(cameraProvider), u)
-        }
+            for ((_, u) in useCases) {
+                camera = cameraProvider.bindToLifecycle(lifecycle, Settings.camSelector(cameraProvider), u)
+            }
+        }, getMainExecutor(appContext))
     }
 }

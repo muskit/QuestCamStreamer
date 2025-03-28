@@ -30,13 +30,12 @@ class MainActivity : ComponentActivity() {
             "android.permission.RECORD_AUDIO",
             "android.permission.POST_NOTIFICATIONS",
             "android.permission.INTERNET",
-            "android.permission.ACCESS_NETWORK_STATE",
 
             "android.permission.FOREGROUND_SERVICE",
             // the following are not needed until Android 14 (HorizonOS 74 is on 12)
             "android.permission.FOREGROUND_SERVICE_CAMERA",
             "android.permission.FOREGROUND_SERVICE_MICROPHONE",
-            "android.permission.FOREGROUND_SERVICE_DATA_SYNC"
+//            "android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE"
         )
         Log.d("askForPerm", "asking for ${perms.size} permissions...")
         requestPermissionLauncher.launch(perms)

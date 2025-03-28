@@ -58,10 +58,12 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 
+    implementation("io.getstream:stream-webrtc-android:1.1.1")
     implementation("androidx.concurrent:concurrent-futures-ktx")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx")
 
-    val cameraVersion = "1.4.1"
+
+    val cameraVersion = "1.4.2"
     implementation("androidx.camera:camera-lifecycle:$cameraVersion")
     implementation("androidx.camera:camera-camera2:$cameraVersion")
     implementation("androidx.camera:camera-view:$cameraVersion")
