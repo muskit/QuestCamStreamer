@@ -62,6 +62,9 @@ dependencies {
     implementation("androidx.concurrent:concurrent-futures-ktx")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx")
 
+    implementation("io.ktor:ktor-client-core:2.3.7")
+    implementation("io.ktor:ktor-client-cio:2.3.7")
+    implementation("io.ktor:ktor-client-websockets:2.3.7")
 
     val cameraVersion = "1.4.2"
     implementation("androidx.camera:camera-lifecycle:$cameraVersion")

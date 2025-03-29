@@ -1,30 +1,30 @@
 package net.muskit.questcamstreamer.video
 import android.media.Image
+import android.util.Log
 import org.webrtc.*
 
 class VideoCapturer(private val eglBaseContext: EglBase.Context) {
     private lateinit var videoSource: VideoSource
     private lateinit var surfaceTextureHelper: SurfaceTextureHelper
-    private lateinit var videoTrack: VideoTrack
+    private lateinit var rtcVideoTrack: VideoTrack
 
     fun initialize(factory: PeerConnectionFactory) {
-        // Create VideoSource
-        videoSource = factory.createVideoSource(false)
-
         // Create SurfaceTextureHelper (required for WebRTC to handle textures)
         surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBaseContext)
 
-        // Create VideoTrack from the VideoSource
-        videoTrack = factory.createVideoTrack("videoTrack", videoSource)
-    }
+        // Create VideoSource
+        videoSource = factory.createVideoSource(false)
 
-    fun getVideoTrack(): VideoTrack = videoTrack
+        // Create VideoTrack from the VideoSource
+        rtcVideoTrack = factory.createVideoTrack("videoTrack", videoSource)
+    }
 
     fun deliverFrame(frame: VideoFrame) {
         videoSource.capturerObserver.onFrameCaptured(frame)
     }
 
     fun deliverImageFrame(image: Image, rotation: Int, timestampNs: Long) {
+        Log.d("VideoCapturer", "deliverImageFrame: $timestampNs")
         // Convert Image to WebRTC's format (e.g., NV21 or I420 buffer)
         val yuvBuffer = convertImageToYUV(image)  // You need to implement this
 

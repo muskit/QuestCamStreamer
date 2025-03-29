@@ -8,12 +8,12 @@ import android.content.Context
 import android.media.Image
 import android.util.Log
 import net.muskit.questcamstreamer.video.VideoCapturer
+import org.json.JSONObject
 import org.webrtc.*
-import java.net.Socket
 
 class RTCClient(
     private val context: Context,
-    private val socket: Socket, // Already established connection
+    private val senderCallback: (String) -> Unit,
     private val eglBase: EglBase = EglBase.create()
 ) {
     private val TAG = "RTCClient"
@@ -28,17 +28,27 @@ class RTCClient(
 
         // Initialize WebRTC
         PeerConnectionFactory.initialize(
-            PeerConnectionFactory.InitializationOptions.builder(context).createInitializationOptions()
+            PeerConnectionFactory.InitializationOptions.builder(context)
+                .setEnableInternalTracer(true)
+                .createInitializationOptions()
         )
 
         peerConnectionFactory = PeerConnectionFactory.builder()
-            .setVideoEncoderFactory(DefaultVideoEncoderFactory(eglBaseContext, true, true))
+            .setOptions(PeerConnectionFactory.Options())
+            .setVideoDecoderFactory(DefaultVideoDecoderFactory(eglBaseContext))
+            .setVideoEncoderFactory(
+                DefaultVideoEncoderFactory(
+                    eglBaseContext,
+                    false,
+                    true
+                )
+            )
             .createPeerConnectionFactory()
 
         // Configure ICE servers
-        val iceServers = listOf<PeerConnection.IceServer>(
+        val iceServers = emptyList<PeerConnection.IceServer>()
 //            PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer()
-        )
+//        )
 
         val rtcConfig = PeerConnection.RTCConfiguration(iceServers).apply {
             sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
@@ -51,7 +61,7 @@ class RTCClient(
         // Create PeerConnection
         peerConnection = peerConnectionFactory.createPeerConnection(rtcConfig, object : PeerConnection.Observer {
             override fun onIceCandidate(iceCandidate: IceCandidate) {
-                sendMessage("ICE:${iceCandidate.sdpMid},${iceCandidate.sdpMLineIndex},${iceCandidate.sdp}")
+//                sendJson("candidate", "${iceCandidate.sdpMid},${iceCandidate.sdpMLineIndex},${iceCandidate.sdp}")
             }
 
 
@@ -75,52 +85,53 @@ class RTCClient(
         peerConnection?.createOffer(object : SdpObserver {
             override fun onCreateSuccess(sdp: SessionDescription) {
                 peerConnection.setLocalDescription(this, sdp)
-                sendMessage("OFFER:${sdp.description}")
+                sendJson("offer", sdp.description)
             }
 
             override fun onSetSuccess() {}
             override fun onCreateFailure(error: String?) {}
             override fun onSetFailure(error: String?) {}
-        }, MediaConstraints())
+        }, MediaConstraints().apply {
+            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
+            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"))
+        })
     }
 
-    fun handleReceivedMessage(message: String) {
-        Log.d(TAG, "handleReceivedMessage: $message")
-        when {
-            message.startsWith("OFFER:") -> {
-                val sdp = message.removePrefix("OFFER:")
-                val remoteSdp = SessionDescription(SessionDescription.Type.OFFER, sdp)
+    fun sendFrame(img: Image, timestampNS: Long) {
+        videoCap.deliverImageFrame(img, 0, timestampNS)
+    }
+
+    private fun sendJson(type: String, message: String) {
+        val data = mapOf(
+            "type" to type,
+            "message" to message
+        )
+        val json = JSONObject(data)
+        senderCallback(json.toString())
+    }
+
+    fun recvJson(data: String) {
+        val j = JSONObject(data)
+        val type = j["type"]
+        val message = j["message"].toString()
+        Log.d(TAG, "handleReceivedJson: [$type]\n$message")
+
+        when(type) {
+            "answer" -> {
+                val remoteSdp = SessionDescription(SessionDescription.Type.ANSWER, message)
                 peerConnection?.setRemoteDescription(object : SdpObserver {
                     override fun onSetSuccess() {
-                        peerConnection.createAnswer(object : SdpObserver {
-                            override fun onCreateSuccess(sdp: SessionDescription) {
-                                peerConnection.setLocalDescription(this, sdp)
-                                sendMessage("ANSWER:${sdp.description}")
-                            }
-
-                            override fun onSetSuccess() {}
-                            override fun onCreateFailure(error: String?) {}
-                            override fun onSetFailure(error: String?) {}
-                        }, MediaConstraints())
-                    }
-
-                    override fun onSetFailure(error: String?) {}
-                    override fun onCreateSuccess(sdp: SessionDescription?) {}
-                    override fun onCreateFailure(error: String?) {}
+                        Log.d(TAG, "set remoteDescription successfully") }
+                    override fun onSetFailure(error: String?) {
+                        Log.d(TAG, "failed to set remoteDescription: $error") }
+                    override fun onCreateSuccess(sdp: SessionDescription?) {
+                        Log.d(TAG, "created remoteDescription successfully") }
+                    override fun onCreateFailure(error: String?) {
+                        Log.d(TAG, "failed to create remoteDescription: $error") }
                 }, remoteSdp)
             }
-            message.startsWith("ANSWER:") -> {
-                val sdp = message.removePrefix("ANSWER:")
-                val remoteSdp = SessionDescription(SessionDescription.Type.ANSWER, sdp)
-                peerConnection?.setRemoteDescription(object : SdpObserver {
-                    override fun onSetSuccess() {}
-                    override fun onSetFailure(error: String?) {}
-                    override fun onCreateSuccess(sdp: SessionDescription?) {}
-                    override fun onCreateFailure(error: String?) {}
-                }, remoteSdp)
-            }
-            message.startsWith("ICE:") -> {
-                val parts = message.removePrefix("ICE:").split(",")
+            "candidate" -> {
+                val parts = message.split(",")
                 if (parts.size == 3) {
                     val iceCandidate = IceCandidate(parts[0], parts[1].toInt(), parts[2])
                     peerConnection?.addIceCandidate(iceCandidate)
@@ -129,17 +140,8 @@ class RTCClient(
         }
     }
 
-    fun sendFrame(img: Image, timestampNS: Long) {
-        videoCap.deliverImageFrame(img, 0, timestampNS)
-    }
-
-    private fun sendMessage(message: String) {
-        socket.getOutputStream().write((message + "\n").toByteArray())
-    }
-
     fun close() {
         peerConnection?.close()
         peerConnectionFactory.dispose()
-        socket.close()
     }
 }
