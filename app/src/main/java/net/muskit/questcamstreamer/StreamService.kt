@@ -4,7 +4,9 @@ import android.app.NotificationManager
 import android.content.Intent
 import android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST
 import android.util.Log
+import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageProxy
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
 import io.ktor.client.HttpClient
@@ -26,17 +28,17 @@ import net.muskit.questcamstreamer.global.Settings
 import net.muskit.questcamstreamer.global.State
 import net.muskit.questcamstreamer.stream.RTCClient
 import net.muskit.questcamstreamer.video.Camera
-import net.muskit.questcamstreamer.video.ImageStreamer
+import net.muskit.questcamstreamer.video.VideoEncoder
 import java.net.URL
 
 class StreamService: LifecycleService() {
     private val TAG = "StreamService"
     private var stopped = false
 
-    private lateinit var connectionCoroutine: CoroutineScope
-    private lateinit var wsClient: ClientWebSocketSession
-    private lateinit var useCase: ImageAnalysis
-    private lateinit var notifBuilder: NotificationCompat.Builder
+    private var connectionCoroutine: CoroutineScope? = null
+    private var wsClient: ClientWebSocketSession? = null
+    private var useCase: ImageAnalysis? = null
+    private var notifBuilder: NotificationCompat.Builder? = null
 
     private var rtcClient: RTCClient? = null
 
@@ -60,9 +62,9 @@ class StreamService: LifecycleService() {
             .setContentText("You are sharing your camera and microphone.")
             .setOngoing(true)
 
-        setStatus(Status.CONNECTING, false)
+        setStatus(Status.CONNECTING, null, false)
         startForeground(
-            1, notifBuilder.build(),
+            1, notifBuilder!!.build(),
            FOREGROUND_SERVICE_TYPE_MANIFEST
         )
 
@@ -70,8 +72,9 @@ class StreamService: LifecycleService() {
         val http = HttpClient(CIO) {
             install(WebSockets)
         }
-        connectionCoroutine = CoroutineScope(Dispatchers.IO)
-        connectionCoroutine.launch { runConnection(http) }
+        connectionCoroutine = CoroutineScope(Dispatchers.IO).apply {
+            launch { runConnection(http)}
+        }
     }
 
     private fun runConnection(http: HttpClient) {
@@ -86,11 +89,12 @@ class StreamService: LifecycleService() {
                     wsClient = this
                     // initialize
                     Log.d(TAG, "tryConnect: initializing webRTC")
-                    rtcClient = RTCClient(svc, {
+                    // TODO: get camera resolution
+                    rtcClient = RTCClient(svc) {
                         CoroutineScope(Dispatchers.IO).launch {
                             send(Frame.Text(it))
                         }
-                    })
+                    }
                     rtcClient!!.createOffer()
 
                     setStatus(Status.CONNECTED)
@@ -107,25 +111,31 @@ class StreamService: LifecycleService() {
                             }
                         }
                     } catch (e: Exception) {
-                        Log.e(TAG, "runConnection: Error receiving message: ${e.message}", )
+                        Log.e(TAG, "runConnection: Error receiving message: ${e.message}")
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "runConnection: error connecting: ${e.message}", )
+                val msg = "error connecting: ${e.message}"
+                Log.e(TAG, msg)
+                setStatus(Status.DISCONNECTED, msg)
             }
         }
         stop()
     }
 
-    private fun setStatus(status: Status, updateExistingNotif: Boolean = true) {
+    private fun setStatus(status: Status, errorMessage: String? = null, updateExistingNotif: Boolean = true) {
         State.streamStatus = status
-        sendBroadcast(Intent(CONNECTION_STATUS_CHANGED).putExtra("status", status))
+        val i = Intent(CONNECTION_STATUS_CHANGED).putExtra("status", status)
+        if (errorMessage != null) {
+            i.putExtra("error", errorMessage)
+        }
+        sendBroadcast(i)
         val txt = status.toString().lowercase().replaceFirstChar { it.uppercaseChar() }
-        notifBuilder.setContentTitle("Status: $txt")
+        notifBuilder?.setContentTitle("Status: $txt")
 
         if (updateExistingNotif) {
             val notifMan = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-            notifMan.notify(1, notifBuilder.build())
+            notifMan.notify(1, notifBuilder?.build())
         }
     }
 
@@ -134,10 +144,21 @@ class StreamService: LifecycleService() {
         CoroutineScope(Dispatchers.Main).launch{
             if (on && rtcClient != null) {
                 useCase = ImageAnalysis.Builder()
+                    .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888)
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                    .build()
-                useCase.setAnalyzer(mainExecutor, ImageStreamer(rtcClient!!))
-                Camera.bindUsecase(svc, useCase, "stream")
+                    .build().apply {
+                        setAnalyzer(mainExecutor, object : ImageAnalysis.Analyzer {
+                            @ExperimentalGetImage
+                            override fun analyze(image: ImageProxy) {
+                                val timestamp = System.nanoTime()
+                                image.image?.let {
+                                    rtcClient?.sendFrame(it, timestamp)
+                                }
+                                image.close()
+                            }
+                        })
+                        Camera.bindUsecase(svc, this, "stream")
+                    }
             } else { // off
                 Camera.unbindUsecase("stream")
             }
@@ -152,12 +173,12 @@ class StreamService: LifecycleService() {
         Log.d(TAG, "stop")
 
         // stop connections
-        if (connectionCoroutine.isActive) {
-            connectionCoroutine.cancel()
+        if (connectionCoroutine?.isActive == true) {
+            connectionCoroutine?.cancel()
         }
         runBlocking {
             Log.d(TAG, "stop: closing ws")
-            wsClient.close()
+            wsClient?.close()
         }
         rtcClient?.close()
 
@@ -177,6 +198,6 @@ class StreamService: LifecycleService() {
         START, END
     }
     companion object {
-        val CONNECTION_STATUS_CHANGED = "net.muskit.QuestCamStreamer_CONNECTION_STATUS"
+        const val CONNECTION_STATUS_CHANGED = "net.muskit.QuestCamStreamer_CONNECTION_STATUS"
     }
 }

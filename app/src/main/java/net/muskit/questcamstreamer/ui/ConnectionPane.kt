@@ -62,7 +62,9 @@ fun ConnectionPane(modifier: Modifier = Modifier) {
         val receiver = object : BroadcastReceiver(){
             override fun onReceive(context: Context?, intent: Intent?) {
                 status = intent?.extras?.get("status") as StreamService.Status
-                Log.d("UI", "ConnectionPane: got status $status")
+                if (intent.getStringExtra("error") != null) {
+                    Toast.makeText(ctx, intent.getStringExtra("error"), Toast.LENGTH_SHORT).show()
+                }
             }
         }
 

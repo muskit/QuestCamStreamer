@@ -7,24 +7,23 @@ import org.webrtc.PeerConnectionFactory
 import android.content.Context
 import android.media.Image
 import android.util.Log
-import net.muskit.questcamstreamer.video.VideoCapturer
+import net.muskit.questcamstreamer.video.VideoDeliverer
 import org.json.JSONObject
 import org.webrtc.*
 
 class RTCClient(
     private val context: Context,
     private val senderCallback: (String) -> Unit,
-    private val eglBase: EglBase = EglBase.create()
 ) {
     private val TAG = "RTCClient"
 
     private val peerConnectionFactory: PeerConnectionFactory
     private val peerConnection: PeerConnection?
 
-    private val videoCap: VideoCapturer
+    private val videoCap: VideoDeliverer
 
     init {
-        val eglBaseContext = eglBase.eglBaseContext
+        val eglBaseContext = EglBase.create().eglBaseContext
 
         // Initialize WebRTC
         PeerConnectionFactory.initialize(
@@ -54,19 +53,18 @@ class RTCClient(
             sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
         }
 
-        // initialize capturer, set up video stream
-        videoCap = VideoCapturer(eglBaseContext)
-        videoCap.initialize(peerConnectionFactory)
+        // initialize video track, which is handled by VideoDeliverer
+        videoCap = VideoDeliverer(eglBaseContext)
+        val vidTrack = videoCap.initializeVideoTrack(peerConnectionFactory)
 
         // Create PeerConnection
         peerConnection = peerConnectionFactory.createPeerConnection(rtcConfig, object : PeerConnection.Observer {
             override fun onIceCandidate(iceCandidate: IceCandidate) {
-//                sendJson("candidate", "${iceCandidate.sdpMid},${iceCandidate.sdpMLineIndex},${iceCandidate.sdp}")
+    //                sendJson("candidate", "${iceCandidate.sdpMid},${iceCandidate.sdpMLineIndex},${iceCandidate.sdp}")
             }
 
-
             override fun onIceConnectionChange(state: PeerConnection.IceConnectionState) {
-                println("ICE Connection State: $state")
+                Log.d(TAG, "onIceConnectionChange: ICE Connection State: $state")
             }
 
             override fun onIceConnectionReceivingChange(p0: Boolean) {}
@@ -78,7 +76,9 @@ class RTCClient(
             override fun onRemoveStream(mediaStream: MediaStream) {}
             override fun onDataChannel(dataChannel: DataChannel) {}
             override fun onRenegotiationNeeded() {}
-        })
+        })?.apply {
+            addTrack(vidTrack)
+        }
     }
 
     fun createOffer() {
@@ -94,10 +94,14 @@ class RTCClient(
         }, MediaConstraints().apply {
             mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
             mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"))
+            mandatory.add(MediaConstraints.KeyValuePair("maxWidth", "2160"))
+            mandatory.add(MediaConstraints.KeyValuePair("maxHeight", "2160"))
+            mandatory.add(MediaConstraints.KeyValuePair("maxFrameRate", "60"))
         })
     }
 
     fun sendFrame(img: Image, timestampNS: Long) {
+//        Log.d(TAG, "sendFrame: res is ${img.width}x${img.height}")
         videoCap.deliverImageFrame(img, 0, timestampNS)
     }
 
