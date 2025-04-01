@@ -38,7 +38,7 @@ class RTCClient(
             .setVideoEncoderFactory(
                 DefaultVideoEncoderFactory(
                     eglBaseContext,
-                    false,
+                    true,
                     true
                 )
             )
@@ -101,7 +101,6 @@ class RTCClient(
     }
 
     fun sendFrame(img: Image, timestampNS: Long) {
-//        Log.d(TAG, "sendFrame: res is ${img.width}x${img.height}")
         videoCap.deliverImageFrame(img, 0, timestampNS)
     }
 

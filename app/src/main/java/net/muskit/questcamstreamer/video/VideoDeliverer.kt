@@ -1,6 +1,5 @@
 package net.muskit.questcamstreamer.video
 import android.media.Image
-import android.util.Log
 import org.webrtc.*
 
 class VideoDeliverer(private val eglBaseContext: EglBase.Context) {
@@ -31,26 +30,7 @@ class VideoDeliverer(private val eglBaseContext: EglBase.Context) {
     }
 
     fun yuv420888ToI420Frame(image: Image, rotation: Int, timestampNs: Long): VideoFrame {
-        val bufferY = image.planes[0].buffer
-        val bufferU = image.planes[1].buffer
-        val bufferV = image.planes[2].buffer
-
-        val strideY = image.planes[0].rowStride
-        val strideU = image.planes[1].rowStride
-        val strideV = image.planes[2].rowStride
-
-        val width = image.width
-        val height = image.height
-
-        val i420Buffer = JavaI420Buffer.wrap(
-            width, height,
-            bufferY, strideY,
-            bufferV, strideV,
-            bufferU, strideU,
-            null
-        )
-
-        // Create VideoFrame
+        val i420Buffer = imageToI420Buffer(image)
         return VideoFrame(i420Buffer, rotation, timestampNs)
     }
 }

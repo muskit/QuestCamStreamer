@@ -152,12 +152,13 @@ class StreamService: LifecycleService() {
                             override fun analyze(image: ImageProxy) {
                                 val timestamp = System.nanoTime()
                                 image.image?.let {
+                                Log.d(TAG, "analyze: res=${it.width}x${it.height};fmt=${it.format}")
                                     rtcClient?.sendFrame(it, timestamp)
                                 }
                                 image.close()
                             }
                         })
-                        Camera.bindUsecase(svc, this, "stream")
+                        Camera.bindUsecase(this, "stream")
                     }
             } else { // off
                 Camera.unbindUsecase("stream")

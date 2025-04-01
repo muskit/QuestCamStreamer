@@ -1,6 +1,7 @@
 package net.muskit.questcamstreamer.ui
 
 import android.util.Log
+import android.view.View
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.absolutePadding
@@ -9,6 +10,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -47,30 +49,37 @@ fun CameraPreview(
 
     val lifecycleOwner = LocalLifecycleOwner.current
     var showPreview by remember { mutableStateOf(Settings.camPreview) }
-    val previewUsecase = androidx.camera.core.Preview.Builder().build()
+    val previewUsecase = androidx.camera.core.Preview.Builder()
+        .build()
 
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
         Camera.unbindUsecase("preview")
     }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         if (showPreview)
-            Camera.bindUsecase(lifecycleOwner, previewUsecase, "preview")
+            Camera.bindUsecase(previewUsecase, "preview")
     }
 
     Box(modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
-        AndroidView(
-            factory = {
-                PreviewView(it).apply {
-                    scaleType = PreviewView.ScaleType.FIT_CENTER
-                    previewUsecase.surfaceProvider = this.surfaceProvider
-                    Camera.bindUsecase(lifecycleOwner, previewUsecase, "preview")
-                }
-            },
-            modifier = Modifier
-                .fillMaxSize()
-        )
+        key(showPreview) {
+            AndroidView(
+                factory = {
+                    if (showPreview) {
+                        PreviewView(it).apply {
+                            scaleType = PreviewView.ScaleType.FIT_CENTER
+                            previewUsecase.surfaceProvider = this.surfaceProvider
+                            Camera.bindUsecase(previewUsecase, "preview")
+                        }
+                    } else {
+                        View(it)
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxSize()
+            )
+        }
         FloatingActionButton(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
@@ -79,7 +88,7 @@ fun CameraPreview(
                 showPreview = !showPreview
                 Log.d("UI", "CameraPreview: toggled preview! state is now $showPreview")
                 if (showPreview)
-                    Camera.bindUsecase(lifecycleOwner, previewUsecase, "preview")
+                    Camera.bindUsecase(previewUsecase, "preview")
                 else
                     Camera.unbindUsecase("preview")
             }

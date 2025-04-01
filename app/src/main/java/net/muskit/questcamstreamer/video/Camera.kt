@@ -24,22 +24,16 @@ object Camera {
             camProviderFut = ProcessCameraProvider.getInstance(ctx)
     }
 
-    public fun bindUsecase(lifecycleOwner: LifecycleOwner, useCase: UseCase, from: String) {
-        // wait for provider if it's not ready yet
-        if (!camProviderFut.isDone) {
-            camProviderFut.addListener({
-                bindUsecase(lifecycleOwner, useCase, from)
-            }, appContext.mainExecutor)
-            return
-        }
+    public fun bindUsecase(useCase: UseCase, from: String) {
+        camProviderFut.addListener({
+            val cameraProvider = camProviderFut.get()
 
-        val cameraProvider = camProviderFut.get()
+            if (useCases.containsKey(from))
+                cameraProvider.unbind(useCases[from])
 
-        if (useCases.containsKey(from))
-            cameraProvider.unbind(useCases[from])
-
-        useCases[from] = useCase
-        refreshUsecasesLifecycle()
+            useCases[from] = useCase
+            refreshUsecasesLifecycle()
+        }, appContext.mainExecutor)
     }
 
     public fun unbindUsecase(from: String) {
