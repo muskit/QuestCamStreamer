@@ -2,4 +2,4 @@
 
 Stream your Meta Quest headset POV to your PC! 
 
-This is an Android app made for the Meta Quest 3 virtual reality headset.
+This is an Android app made for the Meta Quest 3 virtual reality headset. Pair it with the [QuestCamReceiver](https://github.com/muskit/QuestCamReceiver), which connects directly via LAN.
